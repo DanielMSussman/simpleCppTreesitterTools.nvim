@@ -4,12 +4,12 @@
 /*!
 This class...
 */
-class classNamed
+class fantasticTestClass
     {
     public:
         //constructors, destructors
-        classNamed();
-        ~classNamed();
+        fantasticTestClass();
+        ~fantasticTestClass();
 
         //argument and return types
         int foo(int a_b, double b, std::vector<double> &c, int b);
@@ -17,7 +17,7 @@ class classNamed
         double& foo3(std::string &message);
         std::vector<double> &foo4(int a, std::vector<double> inputVector);
 
-        //handle "find the next node" when the next sibling isn't a function
+        //shouldn't matter if there are non-functions scattered throughout
         double variable_Name; 
 
         //default arguments
@@ -32,29 +32,44 @@ class classNamed
             {
             variable_Name2 = a;
             };
+
         //templated functions
         template<typename T>
         T vfoo(T a,double b);
 
         //static functions
         static double staticTest(std::vector<int> &a);
-        template<typename T>
-        static void staticTemplateTest(T a);
 
-
-
-    //handle "find the next node" when the next sibling isn't a function
+    //access specifiers shouldn't matter at all
     private:
 
-        //custom / unknown datatype
+        // custom / unknown datatype
         vector3 *returnVector(std::vector<float> &a, vector3 b);
 
-        //const functions
-        int cTest(const int a) const;
+        //constness and constexpr
+        int cTest(double a , const int b) const;
+        constexpr int cTest2(const int a);
+        constexpr int cTest3(const int a) const;
+        template<typename T>
+        T vfoo(T a,double b,customType c) const;
+
         int variable_Name2; 
 
-        
+    };
 
+/*!
+This class...
+*/
+template<typename U>
+class testClass2
+    {
+    public:
+        //different class, same signature
+        int foo(int a_b, double b, std::vector<double> &c, int b);
+        //use both flavors of templates correctly
+        int foo2(U &a);
+        template<typename T>
+        T vfoo(T a,U b);
     };
 
 #endif

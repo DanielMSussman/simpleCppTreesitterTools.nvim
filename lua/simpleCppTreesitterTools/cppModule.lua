@@ -16,40 +16,33 @@ M.config = {
 
 
 --[[
- take a "signature" (the string we want to associated with the functions in the header file),
-and format an implementation stub around it. Hope you like Whitesmiths!
---]]
-M.appendFormatedSignatureToTable = function(contentToAppend,signature)
-    table.insert(contentToAppend,"")
-    for i, line in ipairs(signature) do 
-        table.insert(contentToAppend, line)
+build up the set of strings that will be added to the file
+Hope you like Whitesmiths!
+]]--
+M.constructImplementationTable = function(returnTypeString,className,functionName,parameterListString,postTypeKeywordString,functionTemplateString,classTemplateString,functionNode)
+    -- destructors weren't covered in the original "non-pure-virtual" query, and I don't want to re-write it...
+    local functionSignature = className.."::"..functionName..parameterListString
+    if returnTypeString then
+        functionSignature = returnTypeString.." "..functionSignature
     end
-    table.insert(contentToAppend, "    {")
-    table.insert(contentToAppend, "    }")
-end
+    if postTypeKeywordString then
+        functionSignature = functionSignature.." "..postTypeKeywordString
+    end
+    local implementation = {}
+    table.insert(implementation,"")
 
---return the function type and the proper node
-M.determineFunctionType = function(node)
-    --If the user is on the template line, the node itself will be a templateDecl
-    if node:type() == "template_declaration" then
-        return node, "templatedFunction"
+    if classTemplateString then
+    table.insert(implementation,classTemplateString)
     end
-    -- if the user is at the beginning of a virtual function, they're already at a field_declaration
-    if node:type() == "field_declaration" then
-        return node, "standardFunction"
-    end
-    if node:type() == "declaration" then
-        return node, "constructorLike"
+    -- there's a bit of remaining jank in how we're capturing templates... we need to distinguish template functions from potentially templated classes
+    if(functionTemplateString and functionNode:parent():type() == "declaration") and functionNode:parent():parent():type() == "template_declaration" then
+        table.insert(implementation,functionTemplateString)
     end
 
-    -- local parent = node:parent()
-    -- if parent:type() == "function_declarator" then
-    --     return parent, "constructorLike"
-    -- end
-    -- if parent:type() == "field_declaration" then
-    --     return parent,"standardFunction"
-    -- end
-
+    table.insert(implementation,functionSignature)
+    table.insert(implementation, "    {")
+    table.insert(implementation, "    }")
+    return implementation
 end
 
 M.determineLocalClass = function()
@@ -64,6 +57,7 @@ M.determineLocalClass = function()
         return nil
     end
 
+
     local className=""
 
     for i = 0, classNode:named_child_count()-1, 1 do
@@ -74,214 +68,85 @@ M.determineLocalClass = function()
         end
     end
 
-    return className, classNode
+    if classNode:parent():type() == "template_declaration" then
+        classTemplateString,classAngleBrackets = treesitterUtilities.getClassTemplateInformation(classNode:parent())
+    end
+
+    return className, classNode, classTemplateString, classAngleBrackets
 end
 
 
 
-M.stripDefaultArgumentsFromParameterList = function(functionNode)
-
-    local argumentTable = treesitterUtilities.getArgumentTableWithoutDefaults(functionNode)
-
-    if argumentTable[1] ==0 then
-        return "()"
-    end
-    local parameterListString = "("
-
-    for i, line in ipairs(argumentTable[2]) do 
-        if i < argumentTable[1] then
-            parameterListString = parameterListString..line[1].." "..line[2]..", "
-        else
-            parameterListString = parameterListString..line[1].." "..line[2]..")"
+M.writeImplementationInFileSorted = function(implementationContent,nodeTable,i)
+    local lineTarget  = -1
+    for loopIndex = i+1,#nodeTable do 
+        local nodeBatch = nodeTable[loopIndex]
+        local functionName = nodeBatch[3]
+        local listOfParameterTypes = nodeBatch[5]
+        local alreadyImplemented,lineNumber = treesitterUtilities.testImplementationFileForFunction(functionName,listOfParameterTypes,M.data.implementationFile)
+        if alreadyImplemented then
+            lineTarget = lineNumber 
+            break
         end
     end
-    return parameterListString
+    helperBot.insertLinesIntoFile(M.data.implementationFile,implementationContent,lineTarget)
 end
 
-M.constructImplementationStringFromNode = function(currentNode,nodeFlavor,className)
-    local implementationString = nil
-    local parameterListString = M.stripDefaultArgumentsFromParameterList(currentNode)
-
-    if nodeFlavor == "standardFunction" then
-        local typeString,functionString = treesitterUtilities.parseFunctionNodeTypeAndName(currentNode)
-
-        implementationString = {typeString.." "..className.."::"..functionString..parameterListString}
-        return implementationString
-    end
-    if nodeFlavor == "templatedFunction" then
-        local templateString,typeString,functionString = treesitterUtilities.parseTemplateFunction(currentNode)
-        implementationString = {templateString,typeString.." "..className.."::"..functionString..parameterListString}
-        return implementationString
-    end
-    if nodeFlavor == "constructorLike" then
-        local classFunctionString = treesitterUtilities.parseConstructorLikeFunction(currentNode)
-        implementationString = {className.."::"..classFunctionString..parameterListString}
-        return implementationString
-    end
-
-    -- vim.notify(implementationString)
-    return implementationString
-end
-
-M.testForImplementationInFile = function(implementationString)
-    local fileContent = vim.fn.readfile(M.data.implementationFile)
-    if not fileContent then
-        return nil
-    end
-
-    local tableLength = treesitterUtilities.getTableLength(implementationString)
-    local matchString = false
-    for i, line in ipairs(fileContent) do
-        if line== implementationString[1] then
-            matchString = true
-            for j = 2, tableLength, 1 do
-                if fileContent[i+j-1] ~= implementationString[j] then 
-                    matchString = false
-                end
-            end
-        end
-        if matchString then
-            return i
-        end
-    end
-    return nil
-end
-
-M.insertLinesIntoFile = function(filename, lines, lineNumber)
-    local file_content = vim.fn.readfile(filename)
-
-    -- Insert the new lines at the specified line number
-    if lineNumber  > 0 and lineNumber <= #file_content then
-        for i = #lines, 1, -1 do
-            table.insert(file_content, lineNumber, lines[i])
-        end
-    else
-        -- If lineNumber is beyond the end of the file, append the lines
-        vim.list_extend(file_content, lines)
-    end
-
-    -- Write the modified content back to the file
-    vim.fn.writefile(file_content, filename)
-end
-
-M.writeNodeToFile = function(node,nodeFlavor,className)
-    local implementationString = M.constructImplementationStringFromNode(node,nodeFlavor,className)
-    local implementationStub = {}
-    M.appendFormatedSignatureToTable(implementationStub,implementationString)
-    local implementationExistsOnLineNumber = M.testForImplementationInFile(implementationString)
-
-    -- print(vim.inspect(implementationStub))
-    -- vim.notify(implementationString)
-
-    if implementationExistsOnLineNumber then
-        if M.config.verboseNotifications then
-            vim.notify(table.concat(implementationString,"\n").." already exists in file")
-        end
-        return
-    end
+M.writeImplementationToFile = function(implementationContent, nodeTable,i)
 
     if M.config.tryToPlaceImplementationInOrder then 
-        M.implementNodeInFileSorted(node,flavor,className,implementationString,implementationStub)
+        M.writeImplementationInFileSorted(implementationContent,nodeTable,i)
+
     else
-        vim.fn.writefile(implementationStub,M.data.implementationFile,"a")
-    end
-end
-
-M.getNextSiblingLocationInFile = function(currentNode,className)
-    local nextSibling = treesitterUtilities.getNextSibling(currentNode)
-
-    while nextSibling do 
-        while treesitterUtilities.siblingToSkip(nextSibling) do 
-            nextSibling = treesitterUtilities.getNextSibling(nextSibling)
-        end
-
-        local siblingNode, siblingNodeFlavor = M.determineFunctionType(nextSibling)
-        local siblingString = M.constructImplementationStringFromNode(siblingNode,siblingNodeFlavor,className)
-        local locationInFile = M.testForImplementationInFile(siblingString)
-        if locationInFile then
-            return nextSibling, locationInFile
-        else
-            nextSibling = treesitterUtilities.getNextSibling(nextSibling)
-        end
-    end
-
-    return nil, nil
-end
-
---[[
-A very low-effort "best-effort" attempt to add the function in the right spot
-in the cpp file. No promises, will fail if the next line is a member variable,
-or a comment, or anything other than what this plugin deals with.
-Approach: see if the string that would have been written for the next child node 
-]]--
-M.implementNodeInFileSorted = function(currentNode,nodeFlavor,className,implementationString,implementationStub)
-
-    --try our best to find the next that's been implemented, and insert before it
-    local nextImplementedSibling, lineToInsert = M.getNextSiblingLocationInFile(currentNode,className)
-
-    if not nextImplementedSibling then
-        vim.fn.writefile(implementationStub,M.data.implementationFile,"a")
-        return
-    end
-
-    if not lineToInsert then
-        M.insertLinesIntoFile(M.data.implementationFile,implementationStub,-1)
-        lineToInsert = -1
-    else
-        M.insertLinesIntoFile(M.data.implementationFile,implementationStub,lineToInsert-1)
+        vim.fn.writefile(implementationContent, M.data.implementationFile,"a")
     end
 
 end
 
 
 M.addImplementationOnCurrentLine = function()
-
-    local className, classNode  = M.determineLocalClass()
-    if not classNode then
-        return
-    end
-    local currentNode = vim.treesitter.get_node()
-    local nodeFlavor = nil
-    --test for function / template / constructor distinctions by looking at parent nodes
-    local isFunction = treesitterUtilities.getNamedAncestor(currentNode,"field_declaration")
-    local isTemplate = treesitterUtilities.getNamedAncestor(currentNode,"template_declaration")
-    local isConstructor = treesitterUtilities.getNamedAncestor(currentNode,"declaration")
-
-    if isFunction then
-        currentNode = isFunction
-        nodeFlavor = "standardFunction"
-    elseif isTemplate then
-        currentNode = isTemplate
-        nodeFlavor = "templatedFunction"
-    elseif isConstructor then -- it's a bit janky... isConstructor will also be true for templated member functions
-        currentNode = isConstructor
-        nodeFlavor = "constructorLike"
-    end
-
-    if not nodeFlavor then
-        if(M.config.verboseNotifications) then
-            vim.notify("Cursor not in or on a line with a function")
-        end
-        return
-    end
-    M.writeNodeToFile(currentNode,nodeFlavor,className)
+    local currentCursorLine = vim.api.nvim_win_get_cursor(0)[1]
+    M.addImplementationsToCPP(currentCursorLine)
 end
 
-M.appendAllImplementationsToCPP = function()
+M.addImplementationsToCPP = function(lineNumberRestriction)
 
-    local className, classNode  = M.determineLocalClass()
+    local className, classNode,classTemplateString,classAngleBrackets  = M.determineLocalClass()
     if not classNode then
         return
+    end
+    if classAngleBrackets then
+        className = className..classAngleBrackets
     end
 
     local nodeTable = treesitterUtilities.getImplementableFields(classNode)
-    -- nodeTable = treesitterUtilities.getAllImplementableFields(classNode)
-    --
-    -- for i, tableItems in ipairs(nodeTable) do 
-    --     local node = tableItems[2]
-    --     local flavor = tableItems[1]
-    --     M.writeNodeToFile(node,flavor,className)
-    -- end
+    for i, nodeBatch in ipairs(nodeTable) do 
+        local functionNode = nodeBatch[1]
+        local returnTypeString = nodeBatch[2]
+        local functionName = nodeBatch[3]
+        local parameterListString = nodeBatch[4]
+        local listOfParameterTypes = nodeBatch[5]
+        local postTypeKeywordString = nodeBatch[6]
+        local templateString = nodeBatch[7]
+        local nodeLineNumber = nodeBatch[8]
+
+        if lineNumberRestriction and lineNumberRestriction ~= nodeLineNumber then
+            goto continue
+        end
+        local alreadyImplemented = treesitterUtilities.testImplementationFileForFunction(functionName,listOfParameterTypes,M.data.implementationFile)
+
+        if alreadyImplemented then
+            if M.config.verboseNotifications then
+                vim.notify(functionName.." with that argument list already exists in file")
+            end
+        else
+            local implementationContent = M.constructImplementationTable(returnTypeString,className,functionName,parameterListString,postTypeKeywordString,templateString,classTemplateString,functionNode)
+            --in addition to the content to be added to the file, pass information that can 
+            --be used to put implementations in the same order as in the header file
+            M.writeImplementationToFile(implementationContent,nodeTable, i)
+        end
+        ::continue::
+    end
 end
 
 M.huntForSnakeCaseVariables = function()
@@ -318,7 +183,6 @@ M.huntForSnakeCaseVariables = function()
 
     end
     if target then
-        -- vim.api.nvim_win_set_cursor(0, {target,0})
         vim.api.nvim_win_set_cursor(0, target)
     end
 end

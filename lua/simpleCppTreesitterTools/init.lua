@@ -3,30 +3,6 @@ local cppModule = require("simpleCppTreesitterTools.cppModule")
 -- reading and writing files? parsing filenames? Ugh. Have helperBot do the dirty work
 local helperBot = require("simpleCppTreesitterTools.fileHelpers")
 
---[[
-Global to-do list:
-   
-   refactor everything using the findNonPureVirtualMembers query (should make life easier
-        better handling of templates: given a templateOrConstructorDeclaration, check if the near-parent is a template. Check if the class has a template
-
-    Derive class -- add all virtual functions to the header (option: only add pure virtual functions)
-        parse pure virtual nodes (pureVirtualFunctionQuery)
-        parse all virtual nodes (pureVirtualKeywordQuery? or look at the starting point of the field declaration, and see if the type starts at the same column or not)
-
-    const functions: check if they have a type_qualifer as child of the declarator
-
-    static: check for (storage_class_specifier) node as sibling prior to type
-
-    snake hunting in header files
-    testForImplementationInFile would be better as a node query on the cpp file, rather than "is this string what the plugin would have written?"
-
-    classes that are themselves templated: not currently handled
-
-    more sophisticated alternate file
-
---]]
-
-
 local M = {}
 
 M.config = {
@@ -88,7 +64,7 @@ end
 
 M.implementMembersInClass = function()
     M.setCurrentFiles()
-    cppModule.appendAllImplementationsToCPP()
+    cppModule.addImplementationsToCPP()
     helperBot.refreshImplementationBuffer(M.data.implementationFile)
 end
 
