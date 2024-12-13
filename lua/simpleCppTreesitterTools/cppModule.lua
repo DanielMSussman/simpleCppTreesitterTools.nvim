@@ -187,7 +187,7 @@ M.huntForSnakeCaseVariables = function()
     end
 end
 
-M.createDerivedClass = function()
+M.createDerivedClass = function(onlyAddVirtalFunctions)
     -- make sure we're already in a class
     local className, classNode  = M.determineLocalClass()
     if not classNode then
@@ -209,9 +209,11 @@ M.createDerivedClass = function()
         vim.notify("A file with the target name already exists... exiting function now")
         return
     end
-    
-    -- to start, include the base class header
-    helperBot.createIncludingFileIfItDoesNotExist(newFileName)
+
+    --start out by getting virtual functions in the current header
+    virtualNodes = treesitterUtilities.findVirtualNodes(classNode)
+
+    -- start building up the file to write
     local contentToAppend = {}
     table.insert(contentToAppend,"")
     table.insert(contentToAppend,"/*!")
@@ -221,9 +223,23 @@ M.createDerivedClass = function()
     table.insert(contentToAppend,"    {")
     table.insert(contentToAppend,"    public:")
     table.insert(contentToAppend,"")
+
+    for i, node in ipairs(virtualNodes) do 
+        local pureVirtual = node[2]
+        local virtualString = node[1]
+        if not onlyAddVirtalFunctions then
+            table.insert(contentToAppend,virtualString)
+            table.insert(contentToAppend,"")
+        elseif pureVirtual then
+            table.insert(contentToAppend,virtualString)
+            table.insert(contentToAppend,"")
+        end
+    end
     table.insert(contentToAppend,"    };")
 
-    vim.fn.writefile(contentToAppend,newFileName,"a")
+
+    --this function call (a) adds header guards and an endif at the end, (b) includes the current header, and (c) sticks all of the above content in the middle of the file 
+    contentToAppend = helperBot.createDerivedFileWithHeaderGuards(newFileName,contentToAppend)
 
 end
 

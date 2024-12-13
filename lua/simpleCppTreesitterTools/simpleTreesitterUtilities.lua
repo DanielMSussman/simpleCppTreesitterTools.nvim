@@ -32,13 +32,33 @@ M.snakeCaseHunting = function()
     return snakeLines
 end
 
-M.findPureVirtualNodes = function()
-    local query = localQueries.pureVirtualFunctionQuery
-    local iterCaptures = query:iter_captures(vim.treesitter.get_node():root(),0)
+M.findVirtualNodes = function(classNode)
+    local query = localQueries.virtualFunctionQuery
+    local iterCaptures = query:iter_matches(classNode,0)
+
     local tableOfNodes = {}
-    for id, node, metadata, match in iterCaptures do
-        --add logic
+    local matches = query:iter_matches(classNode, 0)
+    for id, match, metadata in iterCaptures do
+        local virtual = match[1]
+        local type = match[2]
+        local declarator = match[3]
+        local isPureVirtual = match[4]
+        local copyString = getNodeText(virtual).." "..getNodeText(type).." "..getNodeText(declarator)..";"
+        --try not to be blinded by the following string manipulation, in which I put the reference and pointer symbols where I want them. You should probably just use a formatter 
+        copyString = copyString:gsub("%s&", "&")
+        copyString = copyString:gsub("%s%*", "%*")
+        copyString = copyString:gsub("&", " &")
+        copyString = copyString:gsub("%*", " %*")
+        copyString = copyString:gsub("%s+", " ")
+        copyString = copyString:gsub("&%s", "&")
+        copyString = copyString:gsub("%*%s", "%*")
+        if isPureVirtual then
+            table.insert(tableOfNodes,{"        "..copyString,true})
+        else
+            table.insert(tableOfNodes,{"        "..copyString,false})
+        end
     end
+    return tableOfNodes
 end
 
 --[[

@@ -50,7 +50,25 @@ M.createIncludingFileIfItDoesNotExist = function(implementationFile)
         local header = M.getLocalHeaderName()
         local contentToAppend={}
         table.insert(contentToAppend,"#include \""..header.."\"")
+
         vim.fn.writefile(contentToAppend,implementationFile,"a")
     end
 end
+
+M.createDerivedFileWithHeaderGuards = function(fileName,fileContent)
+    local header = M.getLocalHeaderName()
+    table.insert(fileContent,1,"#include \""..header.."\"")
+    local guardString = fileName:match("([^\\/]+)$") 
+    guardString = string.upper(string.gsub(guardString,"%.","_"))
+
+    table.insert(fileContent,1,"")
+    table.insert(fileContent,1,"#define "..guardString)
+    table.insert(fileContent,1,"#ifndef "..guardString)
+
+    table.insert(fileContent,"")
+    table.insert(fileContent,"#endif")
+    vim.fn.writefile(fileContent,fileName,"a")
+    return fileContent
+end
+
 return M

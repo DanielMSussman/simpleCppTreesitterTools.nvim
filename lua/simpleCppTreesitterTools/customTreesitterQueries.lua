@@ -117,15 +117,15 @@ Find pure virtual functions, which will be a node that has a type,
 and then a function_declarator and a number_literal as siblings
 (because of the "virtual type functionName(...) = 0; syntax)
 ]]--
-M.pureVirtualFunctionQuery = vim.treesitter.query.parse(
+M.virtualFunctionQuery = vim.treesitter.query.parse(
     "cpp",
     [[
     (field_declaration
         ["virtual"] @virt
         type : (_) @type
         declarator : (_) @decl
-        (number_literal)
-        ) @pureVirtualFunction
+        (number_literal)? @pureVirtual
+        ) @virtualFunction
     ]]
 )
 

@@ -8,6 +8,7 @@ local M = {}
 M.config = {
     verboseNotifications = true,
     tryToPlaceImplementationInOrder = true,
+    onlyDerivePureVirtual = false,
 }
 M.data = {
     headerFile ="",
@@ -48,7 +49,7 @@ M.createDerivedClass = function()
 
     cppModule.data.headerFile = M.data.headerFile
     cppModule.data.implementationFile = M.data.implementationFile
-    cppModule.createDerivedClass()
+    cppModule.createDerivedClass(M.config.onlyDerivePureVirtual)
 end
 
 --This function should be called from the buffer corresponding to the header. It will set the path to the implementation file, and create that file if it doesn't exist
