@@ -60,6 +60,14 @@ Documentation for [treesitter](https://tree-sitter.github.io/tree-sitter/) and [
 
 [refactoring.nvim](https://github.com/ThePrimeagen/refactoring.nvim)
 
-## Related, and better, plugins
+## Related --- and better! --- plugins
+
+### (neo)vim
 
 [nvim-treesitter-cpp-tools](https://github.com/Badhi/nvim-treesitter-cpp-tools)
+
+[lh-cpp](https://github.com/LucHermitte/lh-cpp/)
+
+### black magic
+
+A lot of what one wants can be done with [sufficiently interesting vim stuff](https://vi.stackexchange.com/questions/44964/any-c-c-definition-generators-for-vim).

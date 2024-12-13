@@ -14,9 +14,9 @@ M.config = {
     implementationExtension=".cpp",
 }
 
-
 --[[
-build up the set of strings that will be added to the file
+build up the set of strings that will be added to the implementation file,
+based on the various parsing actions done.
 Hope you like Whitesmiths!
 ]]--
 M.constructImplementationTable = function(returnTypeString,className,functionName,parameterListString,postTypeKeywordString,functionTemplateString,classTemplateString,functionNode)
@@ -45,6 +45,10 @@ M.constructImplementationTable = function(returnTypeString,className,functionNam
     return implementation
 end
 
+--[[
+From the cursor position, climb up the syntax tree to discover what class we are in.
+Deduce, as necessary, any class template information
+]]--
 M.determineLocalClass = function()
     -- get the class specifier we're sitting inside of
     local currentNode = vim.treesitter.get_node()
@@ -77,6 +81,13 @@ end
 
 
 
+--[[
+Interface with the treesitterUtilities functions to try to figure out where the implementation
+should be placed in the cpp file.
+Ideally, the cpp file has declaration in the same order as the header file (?),
+and we do this by scanning the table of nodes in the header for nodes 
+after the current target to see if their implementation exists already.
+]]--
 M.writeImplementationInFileSorted = function(implementationContent,nodeTable,i)
     local lineTarget  = -1
     for loopIndex = i+1,#nodeTable do 
@@ -92,6 +103,10 @@ M.writeImplementationInFileSorted = function(implementationContent,nodeTable,i)
     helperBot.insertLinesIntoFile(M.data.implementationFile,implementationContent,lineTarget)
 end
 
+--[[
+Depending on the plugin config, either append the implementation to the end of the file or 
+try to keep the cpp file implementations in the same order as the header
+]]--
 M.writeImplementationToFile = function(implementationContent, nodeTable,i)
 
     if M.config.tryToPlaceImplementationInOrder then 
@@ -104,11 +119,25 @@ M.writeImplementationToFile = function(implementationContent, nodeTable,i)
 end
 
 
+--[[
+For simplicity, adding the implementation on the current cursor line calls the 
+"implementEverything" functions below, but then filters the table of nodes based on the 
+position of the cursor.
+This is useful given how I've implemented the "try to keep the cpp file sorted" logic
+]]--
 M.addImplementationOnCurrentLine = function()
     local currentCursorLine = vim.api.nvim_win_get_cursor(0)[1]
     M.addImplementationsToCPP(currentCursorLine)
 end
 
+--[[
+The driver function of this plugin. First, it determines information about the class the cursor is inside of.
+It then uses treesitterUtilities to get a table containing function nodes (and other pre-parsed information
+about the relevant strings) of functions in the header.
+It does its best to check if those functions are already implemented in the cpp file, and if not it adds them.
+The function argument is a line number --- if this is not nil then only nodes 
+whose starting line number is on the function argument will be a potential target of implementation
+]]--
 M.addImplementationsToCPP = function(lineNumberRestriction)
 
     local className, classNode,classTemplateString,classAngleBrackets  = M.determineLocalClass()
@@ -149,6 +178,10 @@ M.addImplementationsToCPP = function(lineNumberRestriction)
     end
 end
 
+--[[
+Make use of the simple query and parsing to find any variable or function argument written with a snake_case name.
+Each invocation of this function jumps the cursor to the next instance, looping from the last entry to the first.
+]]--
 M.huntForSnakeCaseVariables = function()
     local snakeLines = treesitterUtilities.snakeCaseHunting()
 
@@ -187,6 +220,15 @@ M.huntForSnakeCaseVariables = function()
     end
 end
 
+--[[
+First, makes sure that the cursor is inside of a class.
+The user is then prompted for a new class name; a new header file implementing a basic
+    include parentClass.h 
+    class derivedClass : public parentClass
+pattern is created.
+Any pure virtual functions in the parent will be added to the new header. A 
+configuration option can be set so that *all* virtual functions in the parent are added, too.
+]]--
 M.createDerivedClass = function(onlyAddVirtalFunctions)
     -- make sure we're already in a class
     local className, classNode  = M.determineLocalClass()

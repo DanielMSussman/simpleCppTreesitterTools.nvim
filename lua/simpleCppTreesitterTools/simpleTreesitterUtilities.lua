@@ -2,10 +2,12 @@ local localQueries = require("simpleCppTreesitterTools.customTreesitterQueries")
 
 local M= {}
 
+--get the text of a node, defaulting to using the current buffer as the source of text
 local getNodeText = function(n,bufferNumberOrString)
     return vim.treesitter.get_node_text(n,bufferNumberOrString or 0)
 end
 
+--climb up the syntax tree until you find a node of type nodeType
 M.getNamedAncestor = function(inputNode, nodeType)
     local currentNode = inputNode
     while currentNode do
@@ -18,20 +20,11 @@ M.getNamedAncestor = function(inputNode, nodeType)
     return currentNode
 end
 
-M.snakeCaseHunting = function()
-    local query = localQueries.snakeCaseVariableQuery
-    local iterCaptures = query:iter_captures(vim.treesitter.get_node():root(),0)
-    local snakeLines = {}
-    for id, node, metadata, match in iterCaptures do
-        --don't complain about include guards
-        if node:parent():type() ~= "preproc_def" and node:parent():type() ~= "preproc_ifdef" then
-            local nodeStartingRow, nodeStartingCol = node:start() -- TS is zero-indexed, neovim lines are 1-indexed
-            table.insert(snakeLines,{nodeStartingRow+1,nodeStartingCol})
-        end
-    end
-    return snakeLines
-end
-
+--[[
+use a custom query to find all virtual functions in the header
+Return a table. Each entry is (a) a string you can use in the derived class
+and (b) a boolean. True indicates that the function is pure virtual.
+]]--
 M.findVirtualNodes = function(classNode)
     local query = localQueries.virtualFunctionQuery
     local iterCaptures = query:iter_matches(classNode,0)
@@ -62,9 +55,34 @@ M.findVirtualNodes = function(classNode)
 end
 
 --[[
-A low-effort "best-effort" test if a file has already been implemented in the cpp file.
-We'll query to see if a function of the same name and with the same list of argument types already exists.
-    ]]--
+Create a table containing the row and column of all variables (or function arguments)
+that have a name_in_snake_case.
+This is basically just to demonstrate simple queries that use not only
+captures but also predicates.
+]]--
+M.snakeCaseHunting = function()
+    local query = localQueries.snakeCaseVariableQuery
+    local iterCaptures = query:iter_captures(vim.treesitter.get_node():root(),0)
+    local snakeLines = {}
+    for id, node, metadata, match in iterCaptures do
+        --don't complain about include guards
+        if node:parent():type() ~= "preproc_def" and node:parent():type() ~= "preproc_ifdef" then
+            local nodeStartingRow, nodeStartingCol = node:start() -- TS is zero-indexed, neovim lines are 1-indexed
+            table.insert(snakeLines,{nodeStartingRow+1,nodeStartingCol})
+        end
+    end
+    return snakeLines
+end
+
+--[[
+A low-effort "best-effort" test to see if a function has already been implemented
+in the cpp file. This works by reading the cpp file in as a string and then using
+treesitter to parse that string. We run a custom query to get information about the 
+function definitions in the cpp file, and try our best to match things up.
+Right now a "match" includes having the same function name and the same list of 
+types for all arguments (i.e., changing the variable names shouldn't matter)..
+If there is a match, we also return the line number that we find the match on.
+]]--
 M.testImplementationFileForFunction = function(functionName,listOfParameterTypes,fileName)
     --read in the file, and run the query on a stringified version of it
     local fileContent = vim.fn.readfile(fileName)
@@ -105,7 +123,8 @@ M.testImplementationFileForFunction = function(functionName,listOfParameterTypes
 end
 
 --[[
-given a parameter_list node, cycle through the children grabbing any constness, the type, and the identifier
+given a parameter_list node, cycle through the children. 
+Grabbing any constness, the parameter type, and the identifier.
 ]]--
 M.parseParameterList = function(parameterListNode,bufferNumberOrString)
     local query = localQueries.parameterListParsingQuery
@@ -128,7 +147,9 @@ M.parseParameterList = function(parameterListNode,bufferNumberOrString)
 end
 
 --[[
-Iterate through children of a function_declarator and return the identifier, parameter_list, and typequalifier
+Iterate through children of a function_declarator.
+Return the identifier, and the parameter_list. Check the type_qualifier
+(i.e., is the function const)
 ]]--
 M.decomposeFunctionDeclarator = function(functionDeclaratorNode)
     local functionName,parameterListNode,typeQualifier = nil,nil,nil
@@ -169,7 +190,9 @@ M.findParentTemplates = function(functionNode)
 end
 
 --[[
-find information about templated classes 
+We handle class templates slightly differently, since they imply 
+that we'll need to do stuff like 
+    className<T>::functionName(...)
 ]]--
 M.getClassTemplateInformation = function(classNodeTemplateDeclaration)
     local classTemplateString = nil
@@ -191,6 +214,7 @@ M.getClassTemplateInformation = function(classNodeTemplateDeclaration)
     return "template"..classTemplateString,"<"..table.concat(classAngleBrackets,",")..">"
 end
 
+--given a list of strings forming the parameter list, appropriately concatenate
 M.combineParameterListStrings = function(parameterListStrings)
     if #parameterListStrings ==0 then
         return "()"
@@ -200,25 +224,29 @@ M.combineParameterListStrings = function(parameterListStrings)
 end
 
 --[[
-pass in a class_specifier node, and find all non-pure-virtual members, templates, constructors, etc
+Starting from a class_specifier node, search for all non-pure-virtual member functions,
+all templated functions, constructors, etc.
+Returns a table, where each entry contains a function node and a bunch of string 
+information that we'll use for writing our files.
 ]]--
-
 M.getImplementableFields = function(classNode)
+
+    local tableOfNodes = {} -- this is what we'll be returning...
+
     local query = localQueries.findNonPureVirtualMembers
-
-    local nodeFlavor = nil
-    local tableOfNodes = {}
-
-
     local matches = query:iter_matches(classNode, 0)
     for id, match, metadata in matches do 
+        --[[
+        look at this mess of variables! I'm trying to make it extremely explicit
+        what we're looking for and where in the corresponding query match they will be.
+        The order in the match table corresponds to the order in which the capture groups appear
+        ]]--
         local functionName = nil
         local returnTypeString = nil
         local templateString = nil
         local parameterListStrings = nil
         local listOfParameterTypes = nil --for testing if the declaration exists in the cpp file, even if the variables have different names
         local nodeLineNumber = nil
-
         local preTypeKewordString = nil
         local postTypeKewordString = nil
         local functionTypeString = nil
@@ -283,7 +311,6 @@ M.getImplementableFields = function(classNode)
         local nodeBatch = {functionNode,returnTypeString,functionName,M.combineParameterListStrings(parameterListStrings),listOfParameterTypes,postTypeKewordString,templateString,nodeLineNumber}
         table.insert(tableOfNodes,nodeBatch)
     end
-    -- end
     return tableOfNodes 
 end
 

@@ -1,7 +1,6 @@
--- It turns out you have to do the dirty work yourself. At least it can be stuffed over here in the corner
 local M = {}
 
-
+-- Slightly misnamed --- this returns the name of the current buffer's file without any path information
 M.getLocalHeaderName = function()
     return vim.fn.expand("%:t")
 end
@@ -12,23 +11,27 @@ M.getAbsoluteFilenames = function()
     return currentFile, cppFilename
 end
 
+--[[ read in a file (with no checks that it definitely exists!), and create a table with all of the lines.
+Insert the desired content in the specified line, or append to the end of the table.
+]]-- Write the contents back out to the file
 M.insertLinesIntoFile = function(filename, lines, lineNumber)
-    local file_content = vim.fn.readfile(filename)
+    local fileContent = vim.fn.readfile(filename)
 
     -- Insert the new lines at the specified line number
-    if lineNumber  > 0 and lineNumber <= #file_content then
+    if lineNumber  > 0 and lineNumber <= #fileContent then
         for i = #lines, 1, -1 do
-            table.insert(file_content, lineNumber, lines[i])
+            table.insert(fileContent, lineNumber, lines[i])
         end
     else
         -- If lineNumber is beyond the end of the file, append the lines
-        vim.list_extend(file_content, lines)
+        vim.list_extend(fileContent, lines)
     end
 
     -- Write the modified content back to the file
-    vim.fn.writefile(file_content, filename)
+    vim.fn.writefile(fileContent, filename)
 end
 
+-- check if the file is, indeed, currently open as a buffer
 M.fileIsOpenInBuffer = function(filename)
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_loaded(buf) and vim.api.nvim_buf_get_name(buf) == filename then
@@ -38,12 +41,14 @@ M.fileIsOpenInBuffer = function(filename)
   return false
 end
 
+-- use checktime to force the screen to update if the file is currently open
 M.refreshImplementationBuffer = function(implementationFile)
     if M.fileIsOpenInBuffer(implementationFile) then
         vim.cmd("checktime "..implementationFile)
     end 
 end
 
+-- create the implementation file if it doesn't exist, and add the "#include headerName.h" line
 M.createIncludingFileIfItDoesNotExist = function(implementationFile)
     local fileIsReadable = vim.fn.filereadable(implementationFile)
     if fileIsReadable == 0 then
@@ -55,6 +60,10 @@ M.createIncludingFileIfItDoesNotExist = function(implementationFile)
     end
 end
 
+--[[
+for creating a file with a derived class... input the desired content,
+then wrap it with header guards and an include headerName line
+]]--
 M.createDerivedFileWithHeaderGuards = function(fileName,fileContent)
     local header = M.getLocalHeaderName()
     table.insert(fileContent,1,"#include \""..header.."\"")

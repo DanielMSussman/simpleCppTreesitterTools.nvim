@@ -2,8 +2,6 @@
 
 ## reasonable priority
 
-Comment in the code to make it easier to learn from
-
 Add documentation for the commands to the text file
 
 Improved "does implementation exist in the file" function which uses not only the

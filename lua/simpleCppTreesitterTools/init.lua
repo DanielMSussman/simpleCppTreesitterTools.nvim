@@ -1,6 +1,6 @@
 -- cppModule has all of the "interesting" functions
 local cppModule = require("simpleCppTreesitterTools.cppModule")
--- reading and writing files? parsing filenames? Ugh. Have helperBot do the dirty work
+-- reading and writing files? parsing filenames? Ugh. Have a helper do the dirty work
 local helperBot = require("simpleCppTreesitterTools.fileHelpers")
 
 local M = {}
@@ -14,7 +14,7 @@ M.data = {
     headerFile ="",
     implementationFile="",
 }
-
+--pass in plugin config options, and define user commands
 M.setup = function(opts)
     M.config = vim.tbl_deep_extend("force",M.config,opts or {})
     cppModule.config.verboseNotifications = M.config.verboseNotifications
@@ -44,39 +44,65 @@ M.setup = function(opts)
     )
 end
 
-M.createDerivedClass = function()
-    M.data.headerFile, M.data.implementationFile = helperBot.getAbsoluteFilenames() 
-
-    cppModule.data.headerFile = M.data.headerFile
-    cppModule.data.implementationFile = M.data.implementationFile
-    cppModule.createDerivedClass(M.config.onlyDerivePureVirtual)
-end
-
---This function should be called from the buffer corresponding to the header. It will set the path to the implementation file, and create that file if it doesn't exist
+--[[
+This function should be called from the buffer corresponding to the header.
+It will set the path to the implementation file, and create that file 
+if it doesn't exist
+]]--
 M.setCurrentFiles = function()
     M.data.headerFile, M.data.implementationFile = helperBot.getAbsoluteFilenames() 
 
     cppModule.data.headerFile = M.data.headerFile
     cppModule.data.implementationFile = M.data.implementationFile
     helperBot.createIncludingFileIfItDoesNotExist(M.data.implementationFile)
-    -- vim.api.nvim_command('edit ' .. M.data.implementationFile)
-    -- vim.api.nvim_command('stopinsert') 
 end
 
+--[[
+Attempts to find all implementable nodes (functions, template functions, 
+constructors, etc...), add them to them to the corresponding cpp file 
+(creating that file if it doesn't exist).
+Tries to check if a function has already been implemented (so that there
+are not repeated implementations, and will try (by default) to put 
+functions in the cpp file in the same order they appear in the header file
+]]--
 M.implementMembersInClass = function()
     M.setCurrentFiles()
     cppModule.addImplementationsToCPP()
     helperBot.refreshImplementationBuffer(M.data.implementationFile)
 end
 
+--[[
+Same as the implementMembersInClass function, but rather than adding all functions,
+only tries to add the function on the same line as the cursor.
+Note that for templated functions, the cursor needs to be on the function declaration line 
+(and not on the template<typename...> line)
+]]--
 M.implementFunctionOnLine = function()
     M.setCurrentFiles()
     cppModule.addImplementationOnCurrentLine()
     helperBot.refreshImplementationBuffer(M.data.implementationFile)
 end
 
+--[[
+Looks for variables or function parameters that are in snake_case formatting,
+and then jumps the cursor to the next line containing one.
+Why? Why not.
+]]--
 M.whereAreTheSnakeCaseVariables = function()
     cppModule.huntForSnakeCaseVariables()
+end
+
+--[[
+Take the current header file, and then create a new header file with a class that derives from it.
+If there are pure virtual functions (or, by config option, *any* virtual functions),
+add them as part of the new header file.
+]]--
+M.createDerivedClass = function()
+    M.data.headerFile, M.data.implementationFile = helperBot.getAbsoluteFilenames() 
+
+    cppModule.data.headerFile = M.data.headerFile
+    cppModule.data.implementationFile = M.data.implementationFile
+    cppModule.createDerivedClass(M.config.onlyDerivePureVirtual)
 end
 
 return M
