@@ -237,9 +237,7 @@ M.getImplementableFields = function(classNode)
     local matches = query:iter_matches(classNode, 0)
     for id, match, metadata in matches do 
         --[[
-        look at this mess of variables! I'm trying to make it extremely explicit
-        what we're looking for and where in the corresponding query match they will be.
-        The order in the match table corresponds to the order in which the capture groups appear
+        look at this mess of variables! 
         ]]--
         local functionName = nil
         local returnTypeString = nil
@@ -251,7 +249,17 @@ M.getImplementableFields = function(classNode)
         local postTypeKewordString = nil
         local functionTypeString = nil
 
-        -- gt local variables corresponding to the match capture groups
+        --[[
+        I'm trying to make it extremely explicit
+        what we're looking for and where in the corresponding query match they will be.
+        The order in the match table corresponds to the order in which the capture groups appear.
+        You can confirm this by something like:
+            for i,captures in ipairs(query.captures) do 
+                vim.notify(tostring(i).." "..captures)
+            end
+        You can also, of course directly looking at the query.captures, a la:
+            print(vim.inspect(query.captures))
+        ]]--
         local isConstexpr = match[1]
         local isStatic = match[2]
         local typeNode = match[3]

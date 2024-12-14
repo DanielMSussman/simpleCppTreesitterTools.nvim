@@ -144,27 +144,6 @@ M.findNonPureVirtualMembers = vim.treesitter.query.parse("cpp",
     ]]
     )
 
---[[
-Hopefully we have all of the key ideas now. This is meant to query an implementation file for information about the function.
-Since it targets definitions instead of declarations, it has a slightly different structure, but should be pretty similar to the above.
-]]--
-M.implementationFileQueryForFunctions = vim.treesitter.query.parse("cpp",
-    [[
-    (function_definition
-      type: (_)? @type
-      (function_declarator
-        (
-        (qualified_identifier
-          [
-           (identifier) @functionName
-           (destructor_name) @functionName
-           ]) @qualifiedID
-        (parameter_list) @parameterList
-                )
-        ) @funcDecl
-        )@funcDefinition
-    ]]
-)
 
 --[[
 Finally, a query that is meant to be applied to a parameter_list, and grab 
@@ -194,4 +173,52 @@ M.parameterListParsingQuery = vim.treesitter.query.parse("cpp",
     ]]
 )
 
+--[[
+Finally, a query to the implementation file for information about the functions defined there.
+This highlights something I haven't quite figured out: how to artfully design queries where the nesting pattern might be different. For now, 
+I'll just kludge along, with explicit patterns for 
+value, pointer, and reference returns.
+
+]]--
+M.implementationFileQueryForFunctions = vim.treesitter.query.parse("cpp",
+    [[
+    (function_definition
+      type: (_)? @type
+      [
+      (function_declarator
+        (
+        (qualified_identifier
+          [
+           (identifier) @functionName
+           (destructor_name) @functionName
+           ]) @qualifiedID
+        (parameter_list) @parameterList
+                )
+        ) @funcDecl
+        (pointer_declarator
+      (function_declarator
+        (
+        (qualified_identifier
+          [
+           (identifier) @functionName
+           (destructor_name) @functionName
+           ]) @qualifiedID
+        (parameter_list) @parameterList
+                )
+                )) @funcDecl
+        (reference_declarator
+      (function_declarator
+        (
+        (qualified_identifier
+          [
+           (identifier) @functionName
+           (destructor_name) @functionName
+           ]) @qualifiedID
+        (parameter_list) @parameterList
+                )
+                )) @funcDecl
+    ]
+        )@funcDefinition
+    ]]
+)
 return M
