@@ -174,6 +174,9 @@ M.addImplementationsToCPP = function(lineNumberRestriction)
             local implementationContent = M.constructImplementationTable(returnTypeString,className,functionName,parameterListString,postTypeKeywordString,templateString,classTemplateString,functionNode)
             --in addition to the content to be added to the file, pass information that can 
             --be used to put implementations in the same order as in the header file
+            if M.config.verboseNotifications then
+                vim.notify("implementing "..functionName)
+            end
             M.writeImplementationToFile(implementationContent,nodeTable, i,className)
         end
         ::continue::

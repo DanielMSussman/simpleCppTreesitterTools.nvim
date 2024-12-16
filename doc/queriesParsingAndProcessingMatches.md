@@ -10,7 +10,7 @@ I thought it might be helpful to clean up some of the notes I took while learnin
 Step one in writing a query to do something is to start getting used to the structure of nodes in the language tree associated with your file. 
 The built-in neovim command `:InspectTree` is absolutely invaluable here. As shown below, it opens up a window with a text-based representation of the tree. 
 The nodes are labeled by their type (all the snake case variables), some of which have names. There is also information about the range of the file that node corresponds to (i.e., there are starting and ending rows and column numbers for each node --- note the zero-based indexing of the treesitter representation!).
-Finally, moving the cursor to a node in the tree view highlights that node's range in the original file
+Finally, moving the cursor to a node in the tree view highlights that node's range in the original file.
 
 ![InspectTree on a simple file](/assets/inspectTree.png)
 
