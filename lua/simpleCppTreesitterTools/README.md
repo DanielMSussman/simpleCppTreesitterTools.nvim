@@ -1,9 +1,12 @@
-# Guide to files in this directory
+# Guide to files here
 
 Below is a brief summary of how I've organized the different lua files that make up this plugin.
 If you're interested in writing queries then the `customTreesitterQueries` file is the place to start.
-The `simpleTreesitterUtilities` file is where to go to find examples of iterating through and processing those queries
+The `simpleTreesitterUtilities` file is where to go to find examples of iterating through and processing those queries.
 
+The `.txt` file in the `/doc/` directory was written as if someone was going to read the help file in vim.
+
+For learning about writing and using custom queries, the [markdown documentation file](/doc/queriesParsingAndProcessingMatches.md) in that directory might be helpful.
 
 ## `init.lua`
 

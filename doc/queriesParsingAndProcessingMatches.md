@@ -5,18 +5,24 @@ There were, however, a few points where the main treesitter and nvim-treesitter 
 As in many cases, I mostly figured things out by (a) copious use of `vim.notify()` and `print(vim.inspect())` throughout the functions I was writing and (b) starting at much more sophisticated code used in other plugins.
 I thought it might be helpful to clean up some of the notes I took while learning in case they're useful to others who want to use treesitter to do some fun things.
 
-## Queries
+## Trees and Queries
 
 Step one in writing a query to do something is to start getting used to the structure of nodes in the language tree associated with your file. 
-The built-in neovim command `:InspectTree` is absolutely invaluable here ---
+The built-in neovim command `:InspectTree` is absolutely invaluable here. As shown below, it opens up a window with a text-based representation of the tree. 
+The nodes are labeled by their type (all the snake case variables), some of which have names. There is also information about the range of the file that node corresponds to (i.e., there are starting and ending rows and column numbers for each node --- note the zero-based indexing of the treesitter representation!).
+Finally, moving the cursor to a node in the tree view highlights that node's range in the original file
 
-TODO: add an image with a simple header and a simple cpp implementation, and description
+![InspectTree on a simple file](/assets/inspectTree.png)
 
----
 
-The documentation for [treesitter itself](https://tree-sitter.github.io/tree-sitter/) is excellent for understanding how to write queries that target different parts of the tree and patterns within it.
 Along with the ability to inspect the tree associated with a buffer, another built-in command (`:EditQuery`) can be used to play around --- writing different queries and seeing what parts of the code are matched on that query and how those matches get sorted into "capture groups" that we'll be able to process later.
+As shown below, one can write a test query, and moving the cursor to the name of a capture highlights all nodes in the original file that (a) match the query and (b) would be captured.
+
+![Using EditQuery to test out simple queries](/assets/editQuery.png)
+
+
 This combination of a view of the tree for the given buffer and live feedback on writing queries makes it easy to iterate and quickly learn how writing queries really works.
+The documentation for [treesitter itself](https://tree-sitter.github.io/tree-sitter/) is excellent for understanding how to write queries that target different parts of the tree and patterns within it.
 
 ### Example queries
 

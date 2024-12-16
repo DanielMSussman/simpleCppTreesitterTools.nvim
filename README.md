@@ -12,6 +12,7 @@ to learn a bit about using treesitter queries.
 ## Features
 
 This plugin basically does four things.
+
 The main function is `ImplementMembersInClass`, which looks at all of the (possibly templated) member functions in a (possibly templated) class.
 It checks whether there are functions that have yet to be implemented in the corresponding `.cpp` file --- including the case that such a file doesn't exist --- and adds an implementation stub.
 It even makes a low-effort "best-effort" attempt to keep the definitions in the same order as the declarations.
@@ -20,7 +21,8 @@ A specialized version, `ImplementMemberOnCursorLine`, does the same thing but ju
 
 A third command, `CreateDerivedClass` creates a new header file with a class which derives from the current class. Virtual functions (or, optionally, only pure virtual functions) in the current class are added as members of the derived class.
 
-Finally, probably most usefully, I've tried to write the code here that it's easy to understand how I'm writing treesitter queries, how I'm parsing them, and how I'm then wrangling those parsed results into my desired results. That's all just a way of saying "this code is not that sophisticated, because I'm not that sophisticated, so it shouldn't be too bad to follow along."
+Finally, probably most usefully, I've tried to write the code here that it's easy to understand how I'm writing treesitter queries, how I'm parsing them, and how I'm then wrangling those parsed results into my desired results. I summarized some tips [here](/doc/queriesParsingAndProcessingMatches.md).
+
 
 
 ## Installation and Configuration
