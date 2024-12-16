@@ -38,10 +38,10 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim), installation is just
 
 There are a small handful of default options that can be changed by passing options to the setup function. A more complete lazy config with all of these options and some suggested keymaps:
 ```lua
-
 {
     "DanielMSussman/simpleCppTreesitterTools.nvim",
     dependencies = { 'nvim-treesitter/nvim-treesitter'},
+    ft = "cpp",
     config = function()
         require("simpleCppTreesitterTools").setup({
             headerExtension =".h",

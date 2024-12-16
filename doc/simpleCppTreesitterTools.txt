@@ -1,5 +1,4 @@
-*simpleCppTreesitterTools.txt* A treesitter-powered plugin for working with
-cpp headers 
+*simpleCppTreesitterTools.txt* treesitter-powered cpp header functions
 *simpleCppTreesitterTools.nvim*
 
 Author:   Daniel M. Sussman 
