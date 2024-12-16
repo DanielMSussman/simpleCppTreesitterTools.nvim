@@ -1,0 +1,128 @@
+*simpleCppTreesitterTools.txt* A treesitter-powered plugin for working with
+cpp headers 
+*simpleCppTreesitterTools.nvim*
+
+Author:   Daniel M. Sussman 
+Homepage: <https://github.com/DanielMSussman/simpleCppTreesitterTools.nvim>
+License:  MIT license
+
+==============================================================================
+CONTENTS                                   *simpleCppTreesitterTools-contents*
+
+    INTRO ................................... |simpleCppTreesitterTools-intro|
+    CONFIGURATION ................... |simpleCppTreesitterTools-configuration|
+    COMMANDS ............................. |simpleCppTreesitterTools-commands|
+
+==============================================================================
+INTRO                                         *simpleCppTreesitterTools-intro*
+
+simpleCppTreesitterTools is a plugin that defines a small number of commands
+for working with header files in a cpp project. It defines and then parses a
+small number of treesitter queries to perform various tasks. Prominently, it
+(a) can take a class in a header file and create implementation stubs in a
+corresponding cpp file, and (b) create a new class which derives from a 
+class in the current file.
+
+When performing these operations, the plugin does its best to handle various
+cpp langauge features (templates, constness, default arguments, etc)
+correctly --- especially the language features that I actually use.
+I'm pretty sure that one could do 90 percent of this with a handful of
+lines of vim commands and string parses, but it was fun to learn how to use 
+treesitter. 
+
+==============================================================================
+CONFIGURATION                         *simpleCppTreesitterTools-configuration*
+
+For basic setup with all of the defaults:
+>lua
+    require('simpleCppTreesitterTools').setup()
+<
+
+Changing the defaults can be done by specifying various options:
+>lua
+    require("simpleCppTreesitterTools").setup({
+	headerExtension =".h",
+	implementationExtension=".cpp",
+	verboseNotifications = true,
+	tryToPlaceImplementationInOrder = true,
+	onlyDerivePureVirtualFunctions = false,
+	dontActuallyWriteFiles = false, -- for testing, of course
+    })
+<
+
+When creating a new header or new implementation file, this plugin will look
+at the current file's name, try to strip the headerExtension from it, and
+then add the implementationExtension to the new implementation file or keep
+the headerExtension and stick it on the new derived class' name.
+
+When verboseNotifications is true, vim.notify() will be called to display
+various messages. 
+
+When tryToPlaceImplementationInOrder is true, when writing the implementation
+file the plugin will make a best-effort attempt to add function
+implementations in the same order as they appear in the header file.
+
+When onlyDerivePureVirtualFunctions is true, when creating a new file for a
+derived class only pure virtual functions in the current class will be added.
+If it is false, all virtual functions will be added to the new class' header
+file.
+
+If dontActuallyWriteFiles is true, then none of the calls that create a file
+or add text to a file will happen. This was useful for testing the plugin, but
+I find it unlikely that anyone else will set it to true.
+
+==============================================================================
+COMMANDS                                   *simpleCppTreesitterTools-commands*
+
+>
+    :ImplementMembersInClass
+<
+When the cursor is inside of a class in a header file, this function
+--- which is equivalent to
+require("simpleCppTreesitterTools".implementMembersInClass() ---
+uses a treesitter query to find all member functions in the class.
+If an implementation file (by default, a .cpp file with the same name as the
+header) does not it exist it is created. An implementation stub, like
+>
+    type className::function(argument list)
+<
+is created. The plugin makes a best effort to detect whether function
+definitions already exist (to prevent duplicate entries), and also to keep
+the implementations in the same order as in the header.
+
+
+>
+    :ImplementMemberOnCursorLine
+<
+This command, --- which is equivalent to
+require("simpleCppTreesitterTools").implementFunctionOnLine() ---
+Is identical to the above command, but rather than trying to implement
+everything in the class, only tries to implement the function on the same 
+line as the cursor.
+
+>
+    :CreateDerivedClass
+<
+This function --- which is equivalent to
+require("simpleCppTreesitterTools").CreateDerivedClass() --- Prompts the user
+for a new class name, and then creates a file:
+>
+    newClassName.h
+<
+This file contains a header guard, and include statement to the current
+header, and a declaration of a class which derives from the class the cursor
+is currently inside of. Virtual functions (optionally, only pure virtual
+functions) are automatically declared in the new header.
+
+
+>
+    :StPatrick
+<
+This extremely silly command -- which is equivalent to 
+require("simpleCppTreesitterTools").whereAreTheSnakeCaseVariables() ---
+uses a treesitter query and some spaghetti code to cycle through all 
+declarations of variables or function arguments that are in snake_case.
+I wrote it as an example of using predicates in a treesitter query, and
+should probably change the name.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
