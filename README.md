@@ -1,27 +1,29 @@
 # simpleCppTreesitterTools.nvim 
 
-This plugin used to just be a messy lua file in my `/after/ftplugin/` directory. 
+
+https://github.com/user-attachments/assets/ba249933-39eb-4fbf-b7bf-81158d550322
+
+This small project started as a messy lua file in my `/after/ftplugin/` directory. 
 When I asked on reddit for [suggestions for cpp plugins](https://www.reddit.com/r/neovim/comments/1h53req/neovim_and_c_luasnip_treesitter_and_reinventing/), it was suggested that
-there weren't as many such plugins, or even resources for learning about treesitter's
-query system, as I might have expected (but please see the Related Plugins section below).
+there weren't as many such plugins --- or resources for learning about treesitter's
+query system --- as I might have expected (but please see the Related Plugins section below).
 
 
-Hence: a plugin which might be slightly useful when coding, and which might be helpful
-to learn a bit about using treesitter queries. 
+Hence: I turned that messy lua file into a plugin which might be slightly useful when coding, and which I hope is helpful for those who want to learn a bit more about integrating custom treesitter into their neovim experience.
 
 ## Features
 
 This plugin basically does four things.
 
-The main function is `ImplementMembersInClass`, which looks at all of the (possibly templated) member functions in a (possibly templated) class.
+The main command is `ImplementMembersInClass`, which looks at all of the (possibly templated) member functions in a (possibly templated) class.
 It checks whether there are functions that have yet to be implemented in the corresponding `.cpp` file --- including the case that such a file doesn't exist --- and adds an implementation stub.
-It even makes a low-effort "best-effort" attempt to keep the definitions in the same order as the declarations.
+It further makes a low-effort "best-effort" attempt to keep the definitions in the same order as the declarations.
 
-A specialized version, `ImplementMemberOnCursorLine`, does the same thing but just for whatever line your cursor happens to be on.
+The `ImplementMemberOnCursorLine` command, does the same thing but just for whatever line your cursor happens to be on.
 
 A third command, `CreateDerivedClass` creates a new header file with a class which derives from the current class. Virtual functions (or, optionally, only pure virtual functions) in the current class are added as members of the derived class.
 
-Finally, probably most usefully, I've tried to write the code here that it's easy to understand how I'm writing treesitter queries, how I'm parsing them, and how I'm then wrangling those parsed results into my desired results. I summarized some tips [here](/doc/queriesParsingAndProcessingMatches.md).
+Finally, probably most usefully, I've tried to write the code here that it's easy to understand how I'm writing treesitter queries, how I'm parsing them, and how I'm then wrangling those parsed results into my desired results. I took notes while I was learning all of this myself, and summarized some tips [here](/doc/queriesParsingAndProcessingMatches.md).
 
 
 
@@ -54,9 +56,9 @@ There are a small handful of default options that can be changed by passing opti
             dontActuallyWriteFiles = false, -- for testing, of course
         })
         vim.keymap.set("n", "<localleader>c", function() vim.cmd("ImplementMembersInClass") end,{desc = 'implement [c]lass member declarations'})
-        vim.keymap.set("n", "<localleader>l", function() vim.cmd("ImplementMemberOnCursorLine") end,{desc = 'implement member current [l]ine'})
+        vim.keymap.set("n", "<localleader>l", function() vim.cmd("ImplementMemberOnCursorLine") end,{desc = 'implement member on current [l]ine'})
         vim.keymap.set("n", "<localleader>s", function() vim.cmd("StPatrick") end,{desc = 'drive out the [s]nakes'})
-        vim.keymap.set("n", "<localleader>d", function() vim.cmd("CreateDerivedClass") end,{desc = 'Create a class which [d]erives from the current one'})
+        vim.keymap.set("n", "<localleader>d", function() vim.cmd("CreateDerivedClass") end,{desc = 'Create a [d]erived class from the current one'})
     end
 }
 ```
