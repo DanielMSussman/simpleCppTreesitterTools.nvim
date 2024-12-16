@@ -65,7 +65,8 @@ text and mp4s go here!
 
 ## Resources to learn from
 
-The documentation quality and the available resources to learn from in the (neo)vim community is typically outstanding; here are some of the ones that I found particularly useful..
+The documentation quality and the available resources to learn from in the (neo)vim community is typically outstanding.
+Below I've listed some of the ones that I found particularly useful, and I've tried to distill the essence of what I've learned about working with treesitter queries [in this documentation file](/doc/queriesParsingAndProcessingMatches.md).
 
 ### Lua and writing plugins
 
