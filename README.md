@@ -112,8 +112,9 @@ Two other sources that helped me learn more about working with treesitter: this 
 ## Related --- almost certainly better! --- plugins
 
 I don't claim any particular originality with this plugin --- I wrote some functions that I found helpful and that gave me an excuse to learn more about a core part of neovim, but I'm hardly the first person to implement a similar set of functions.
+
 Badhi's [nvim-treesitter-cpp-tools](https://github.com/Badhi/nvim-treesitter-cpp-tools) is another treesitter-powered plugin that contains almost a superset of the functions here. It uses somewhat simpler treesitter queries and does more work parsing them in the plugin, whereas I've tended to use a lot more capture groups in my queries so that I have less work to do in the plugin itself.
 
-I recently found this much older plugin that implements *many* more cpp-related features. It ([lh-cpp](https://github.com/LucHermitte/lh-cpp/)) takes a quite different approach to the problem, but I haven't experimented with it too much.
+I recently found an older plugin that implements *many* more cpp-related features. [lh-cpp](https://github.com/LucHermitte/lh-cpp/) takes a quite different approach to the problem, and I haven't experimented with it too much. Looks interesting.
 
-Finally, it's probably important to remember that roughly 90 percent of what this plugin does can be replicated with [sufficiently interesting vim stuff / black magic](https://vi.stackexchange.com/questions/44964/any-c-c-definition-generators-for-vim). 
+Finally, it's probably important to remember that roughly 90 percent of what this plugin does can be replicated with [sufficiently interesting vim stuff / black magic](https://vi.stackexchange.com/questions/44964/any-c-c-definition-generators-for-vim). 100 percent could be done by combining ideas like this with a willingness to just type more characters.
