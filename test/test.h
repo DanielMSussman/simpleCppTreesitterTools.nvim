@@ -60,7 +60,7 @@ class fantasticTestClass
 /*!
 This class...
 */
-template<typename U>
+template<class U>
 class testClass2
     {
     public:

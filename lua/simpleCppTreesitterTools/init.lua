@@ -20,7 +20,6 @@ M.data = {
 --pass in plugin config options, and define user commands
 M.setup = function(opts)
     M.config = vim.tbl_deep_extend("force",M.config,opts or {})
-    print(vim.inspect(M.config))
     cppModule.config = M.config
 
     --set some user commands for convenience?
@@ -56,7 +55,9 @@ M.setCurrentFiles = function()
     M.data.headerFile, M.data.implementationFile = helperBot.getAbsoluteFilenames(M.config.headerExtension,M.config.implementationExtension) 
 
     cppModule.data = M.data
-    helperBot.createIncludingFileIfItDoesNotExist(M.data.implementationFile)
+    if not M.config.dontActuallyWriteFiles then
+        helperBot.createIncludingFileIfItDoesNotExist(M.data.implementationFile)
+    end
 end
 
 --[[
@@ -101,7 +102,7 @@ add them as part of the new header file.
 ]]--
 M.createDerivedClass = function()
     M.data.headerFile, M.data.implementationFile = helperBot.getAbsoluteFilenames(M.config.headerExtension,M.config.implementationExtension) 
-    cppModule.data =M.data
+    cppModule.data = M.data
     cppModule.createDerivedClass()
 end
 

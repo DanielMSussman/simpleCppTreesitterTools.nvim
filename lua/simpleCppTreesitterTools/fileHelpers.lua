@@ -16,7 +16,10 @@ end
 --[[ read in a file (with no checks that it definitely exists!), and create a table with all of the lines.
 Insert the desired content in the specified line, or append to the end of the table.
 ]]-- Write the contents back out to the file
-M.insertLinesIntoFile = function(filename, lines, lineNumber)
+M.insertLinesIntoFile = function(filename, lines, lineNumber,dontWrite)
+    if vim.fn.filereadable(filename) == 0 then
+        return nil,nil
+    end
     local fileContent = vim.fn.readfile(filename)
 
     -- Insert the new lines at the specified line number
@@ -30,7 +33,9 @@ M.insertLinesIntoFile = function(filename, lines, lineNumber)
     end
 
     -- Write the modified content back to the file
-    vim.fn.writefile(fileContent, filename)
+    if not dontWrite then
+        vim.fn.writefile(fileContent, filename)
+    end
 end
 
 -- check if the file is, indeed, currently open as a buffer
@@ -50,15 +55,17 @@ M.refreshImplementationBuffer = function(implementationFile)
     end 
 end
 
--- create the implementation file if it doesn't exist, and add the "#include headerName.h" line
-M.createIncludingFileIfItDoesNotExist = function(implementationFile)
+-- create the file if it doesn't exist, and add the "#include headerName.h" line
+M.createIncludingFileIfItDoesNotExist = function(implementationFile, dontWrite)
     local fileIsReadable = vim.fn.filereadable(implementationFile)
     if fileIsReadable == 0 then
         local header = M.getLocalHeaderName()
         local contentToAppend={}
         table.insert(contentToAppend,"#include \""..header.."\"")
 
-        vim.fn.writefile(contentToAppend,implementationFile,"a")
+        if not dontWrite then
+            vim.fn.writefile(contentToAppend,implementationFile,"a")
+        end
     end
 end
 
@@ -66,7 +73,7 @@ end
 for creating a file with a derived class... input the desired content,
 then wrap it with header guards and an include headerName line
 ]]--
-M.createDerivedFileWithHeaderGuards = function(fileName,fileContent)
+M.createDerivedFileWithHeaderGuards = function(fileName,fileContent, dontWrite)
     local header = M.getLocalHeaderName()
     table.insert(fileContent,1,"#include \""..header.."\"")
     local guardString = fileName:match("([^\\/]+)$") 
@@ -78,7 +85,9 @@ M.createDerivedFileWithHeaderGuards = function(fileName,fileContent)
 
     table.insert(fileContent,"")
     table.insert(fileContent,"#endif")
-    vim.fn.writefile(fileContent,fileName,"a")
+    if not dontWrite then
+        vim.fn.writefile(fileContent,fileName,"a")
+    end
     return fileContent
 end
 

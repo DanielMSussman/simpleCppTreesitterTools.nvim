@@ -98,7 +98,7 @@ M.writeImplementationInFileSorted = function(implementationContent,nodeTable,i,c
             break
         end
     end
-    helperBot.insertLinesIntoFile(M.data.implementationFile,implementationContent,lineTarget)
+    helperBot.insertLinesIntoFile(M.data.implementationFile,implementationContent,lineTarget,M.config.dontActuallyWriteFiles)
 end
 
 --[[
@@ -111,7 +111,9 @@ M.writeImplementationToFile = function(implementationContent, nodeTable,i,classN
         M.writeImplementationInFileSorted(implementationContent,nodeTable,i,className)
 
     else
-        vim.fn.writefile(implementationContent, M.data.implementationFile,"a")
+        if not M.config.dontActuallyWriteFiles then
+            vim.fn.writefile(implementationContent, M.data.implementationFile,"a")
+        end
     end
 
 end

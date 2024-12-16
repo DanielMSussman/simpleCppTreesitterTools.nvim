@@ -85,6 +85,9 @@ If there is a match, we also return the line number that we find the match on.
 ]]--
 M.testImplementationFileForFunction = function(functionName,listOfParameterTypes,className,fileName)
     --read in the file, and run the query on a stringified version of it
+    if vim.fn.filereadable(fileName) == 0 then
+        return nil,nil
+    end
     local fileContent = vim.fn.readfile(fileName)
     local functionNodeStart = nil
     if not fileContent then
