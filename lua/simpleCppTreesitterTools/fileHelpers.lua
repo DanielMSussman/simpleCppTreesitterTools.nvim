@@ -5,9 +5,11 @@ M.getLocalHeaderName = function()
     return vim.fn.expand("%:t")
 end
 
-M.getAbsoluteFilenames = function()
+M.getAbsoluteFilenames = function(headerExtension,implementationExtension)
     local currentFile = vim.fn.expand("%:p")
     local cppFilename = currentFile:gsub("%.h$", ".cpp")
+
+    local testName = currentFile:gsub(headerExtension .. "$", implementationExtension)
     return currentFile, cppFilename
 end
 

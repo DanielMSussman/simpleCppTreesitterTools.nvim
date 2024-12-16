@@ -6,9 +6,12 @@ local helperBot = require("simpleCppTreesitterTools.fileHelpers")
 local M = {}
 
 M.config = {
+    headerExtension =".h",
+    implementationExtension=".cpp",
     verboseNotifications = true,
     tryToPlaceImplementationInOrder = true,
-    onlyDerivePureVirtual = false,
+    onlyDerivePureVirtualFunctions = false,
+    dontActuallyWriteFiles = false, -- for testing, of course
 }
 M.data = {
     headerFile ="",
@@ -17,8 +20,8 @@ M.data = {
 --pass in plugin config options, and define user commands
 M.setup = function(opts)
     M.config = vim.tbl_deep_extend("force",M.config,opts or {})
-    cppModule.config.verboseNotifications = M.config.verboseNotifications
-    cppModule.config.tryToPlaceImplementationInOrder = M.config.tryToPlaceImplementationInOrder
+    print(vim.inspect(M.config))
+    cppModule.config = M.config
 
     --set some user commands for convenience?
     
@@ -50,10 +53,9 @@ It will set the path to the implementation file, and create that file
 if it doesn't exist
 ]]--
 M.setCurrentFiles = function()
-    M.data.headerFile, M.data.implementationFile = helperBot.getAbsoluteFilenames() 
+    M.data.headerFile, M.data.implementationFile = helperBot.getAbsoluteFilenames(M.config.headerExtension,M.config.implementationExtension) 
 
-    cppModule.data.headerFile = M.data.headerFile
-    cppModule.data.implementationFile = M.data.implementationFile
+    cppModule.data = M.data
     helperBot.createIncludingFileIfItDoesNotExist(M.data.implementationFile)
 end
 
@@ -98,11 +100,9 @@ If there are pure virtual functions (or, by config option, *any* virtual functio
 add them as part of the new header file.
 ]]--
 M.createDerivedClass = function()
-    M.data.headerFile, M.data.implementationFile = helperBot.getAbsoluteFilenames() 
-
-    cppModule.data.headerFile = M.data.headerFile
-    cppModule.data.implementationFile = M.data.implementationFile
-    cppModule.createDerivedClass(M.config.onlyDerivePureVirtual)
+    M.data.headerFile, M.data.implementationFile = helperBot.getAbsoluteFilenames(M.config.headerExtension,M.config.implementationExtension) 
+    cppModule.data =M.data
+    cppModule.createDerivedClass()
 end
 
 return M

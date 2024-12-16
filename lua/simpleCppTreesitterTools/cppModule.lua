@@ -2,16 +2,14 @@ local treesitterUtilities = require("simpleCppTreesitterTools.simpleTreesitterUt
 local helperBot = require("simpleCppTreesitterTools.fileHelpers")
 local M = {}
 
+--will be set on call to init.lua's setCurrntFiles()
 M.data = {
     headerFile ="",
     implementationFile="",
 }
 
+--will be set during plugin setup
 M.config = {
-    verboseNotifications = true,
-    tryToPlaceImplementationInOrder = true,
-    headerExtension =".h",
-    implementationExtension=".cpp",
 }
 
 --[[
@@ -88,13 +86,13 @@ Ideally, the cpp file has declaration in the same order as the header file (?),
 and we do this by scanning the table of nodes in the header for nodes 
 after the current target to see if their implementation exists already.
 ]]--
-M.writeImplementationInFileSorted = function(implementationContent,nodeTable,i)
+M.writeImplementationInFileSorted = function(implementationContent,nodeTable,i,className)
     local lineTarget  = -1
     for loopIndex = i+1,#nodeTable do 
         local nodeBatch = nodeTable[loopIndex]
         local functionName = nodeBatch[3]
         local listOfParameterTypes = nodeBatch[5]
-        local alreadyImplemented,lineNumber = treesitterUtilities.testImplementationFileForFunction(functionName,listOfParameterTypes,M.data.implementationFile)
+        local alreadyImplemented,lineNumber = treesitterUtilities.testImplementationFileForFunction(functionName,listOfParameterTypes,className,M.data.implementationFile)
         if alreadyImplemented then
             lineTarget = lineNumber 
             break
@@ -107,10 +105,10 @@ end
 Depending on the plugin config, either append the implementation to the end of the file or 
 try to keep the cpp file implementations in the same order as the header
 ]]--
-M.writeImplementationToFile = function(implementationContent, nodeTable,i)
+M.writeImplementationToFile = function(implementationContent, nodeTable,i,className)
 
     if M.config.tryToPlaceImplementationInOrder then 
-        M.writeImplementationInFileSorted(implementationContent,nodeTable,i)
+        M.writeImplementationInFileSorted(implementationContent,nodeTable,i,className)
 
     else
         vim.fn.writefile(implementationContent, M.data.implementationFile,"a")
@@ -159,10 +157,12 @@ M.addImplementationsToCPP = function(lineNumberRestriction)
         local templateString = nodeBatch[7]
         local nodeLineNumber = nodeBatch[8]
 
+        -- just hackily skip most of the work if we only want to implement one function
         if lineNumberRestriction and lineNumberRestriction ~= nodeLineNumber then
             goto continue
         end
-        local alreadyImplemented = treesitterUtilities.testImplementationFileForFunction(functionName,listOfParameterTypes,M.data.implementationFile)
+
+        local alreadyImplemented = treesitterUtilities.testImplementationFileForFunction(functionName,listOfParameterTypes,className,M.data.implementationFile)
 
         if alreadyImplemented then
             if M.config.verboseNotifications then
@@ -172,7 +172,7 @@ M.addImplementationsToCPP = function(lineNumberRestriction)
             local implementationContent = M.constructImplementationTable(returnTypeString,className,functionName,parameterListString,postTypeKeywordString,templateString,classTemplateString,functionNode)
             --in addition to the content to be added to the file, pass information that can 
             --be used to put implementations in the same order as in the header file
-            M.writeImplementationToFile(implementationContent,nodeTable, i)
+            M.writeImplementationToFile(implementationContent,nodeTable, i,className)
         end
         ::continue::
     end
@@ -229,7 +229,7 @@ pattern is created.
 Any pure virtual functions in the parent will be added to the new header. A 
 configuration option can be set so that *all* virtual functions in the parent are added, too.
 ]]--
-M.createDerivedClass = function(onlyAddVirtalFunctions)
+M.createDerivedClass = function()
     -- make sure we're already in a class
     local className, classNode  = M.determineLocalClass()
     if not classNode then
@@ -246,7 +246,8 @@ M.createDerivedClass = function(onlyAddVirtalFunctions)
         end
         return
     end
-    local newFileName = vim.fn.expand("%:h").."\\"..newClassName..M.config.headerExtension
+    local newFileName = vim.fn.expand("%:h").."/"..newClassName..M.config.headerExtension
+
     if vim.fn.filereadable(newFileName) == 1 then
         vim.notify("A file with the target name already exists... exiting function now")
         return
@@ -259,7 +260,7 @@ M.createDerivedClass = function(onlyAddVirtalFunctions)
     local contentToAppend = {}
     table.insert(contentToAppend,"")
     table.insert(contentToAppend,"/*!")
-    table.insert(contentToAppend,"This class, inheriting from "..className.."...")
+    table.insert(contentToAppend,"This class, inheriting from "..className..", ...")
     table.insert(contentToAppend,"*/")
     table.insert(contentToAppend,"class "..newClassName.." : public "..className)
     table.insert(contentToAppend,"    {")
@@ -269,7 +270,7 @@ M.createDerivedClass = function(onlyAddVirtalFunctions)
     for i, node in ipairs(virtualNodes) do 
         local pureVirtual = node[2]
         local virtualString = node[1]
-        if not onlyAddVirtalFunctions then
+        if not M.config.onlyDerivePureVirtualFunctions then
             table.insert(contentToAppend,virtualString)
             table.insert(contentToAppend,"")
         elseif pureVirtual then

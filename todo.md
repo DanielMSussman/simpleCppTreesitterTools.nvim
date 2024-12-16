@@ -2,10 +2,10 @@
 
 ## reasonable priority
 
-Add documentation for the commands to the text file
+have main functions return the stuff they'll write (for testing), and have an option that says "we're just testing...do everything except the write-to-file parts"
 
-Improved "does implementation exist in the file" function which uses not only the
-function name and argument list, but also the class name
+write doc / tutorial page
+
 
 ## reasonably low priority
 

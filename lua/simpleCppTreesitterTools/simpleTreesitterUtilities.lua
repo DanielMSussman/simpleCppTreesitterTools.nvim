@@ -83,7 +83,7 @@ Right now a "match" includes having the same function name and the same list of
 types for all arguments (i.e., changing the variable names shouldn't matter)..
 If there is a match, we also return the line number that we find the match on.
 ]]--
-M.testImplementationFileForFunction = function(functionName,listOfParameterTypes,fileName)
+M.testImplementationFileForFunction = function(functionName,listOfParameterTypes,className,fileName)
     --read in the file, and run the query on a stringified version of it
     local fileContent = vim.fn.readfile(fileName)
     local functionNodeStart = nil
@@ -104,20 +104,26 @@ M.testImplementationFileForFunction = function(functionName,listOfParameterTypes
     for id, match, metadata in matches do 
         --matches have nodes like:
         --type? functionName, qualifiedID, parameterList,functionDecl,funcDefinition
-        fileFunctionName = getNodeText(match[2],fileString)
-        --what line does this function start on? Are there template declarations above it?
-        functionNodeStart = match[2]:start()
-        while string.find(fileContent[functionNodeStart],"template") do 
-            functionNodeStart = functionNodeStart - 1
-        end
-        --if we find a function of the same name, does it have the same set of argument types?
-        if fileFunctionName == functionName then
-            local parameterStrings, typeStrings = M.parseParameterList(match[4],fileString)
-            if table.concat(listOfParameterTypes) == table.concat(typeStrings) then
-                return true, functionNodeStart
+        
+        --get the class name by looking at the qualified_identifier and stripping away the double colons and everything after them
+        qualifiedIDName = getNodeText(match[3],fileString)
+        local classSpecifier = qualifiedIDName:match("^(.*)::")
+
+        if classSpecifier == className then
+            fileFunctionName = getNodeText(match[2],fileString)
+            --if we find a function of the same name, does it have the same set of argument types?
+            if fileFunctionName == functionName then
+                local parameterStrings, typeStrings = M.parseParameterList(match[4],fileString)
+                if table.concat(listOfParameterTypes) == table.concat(typeStrings) then
+                    --what line does this function start on? Are there template declarations above it?
+                    functionNodeStart = match[2]:start()
+                    while string.find(fileContent[functionNodeStart],"template") do 
+                        functionNodeStart = functionNodeStart - 1
+                    end
+                    return true, functionNodeStart
+                end
             end
         end
-        
     end
     return false, functionNodeStart
 end
