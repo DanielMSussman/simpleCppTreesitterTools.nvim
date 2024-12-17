@@ -31,7 +31,7 @@ In case it's helpful, though, I'll give just a few examples here.
 
 #### Single-node queries
 
-The simplest query is what that matches on any specific node in the language tree. For instance, in a lua file one could define a local query like so:
+The simplest query is one that matches on any specific node in the language tree. For instance, in a lua file one could define a local query like so:
 ```lua
 local query = vim.treesitter.query.parse("cpp",
     [[
@@ -39,7 +39,7 @@ local query = vim.treesitter.query.parse("cpp",
     ]]
 )
 ```
-If we run this query on a buffer (see below) we'll get a match on every node in the tree which is a `function_definition`. The "at" symbol sets up a capture that we'll be able to access (again, see below) --- the name we give to it is irrelevant, and I tend to just use a camel-case version of the kind of node I'm capturing.
+If we run this query on a buffer (see below) we'll get a match on every node in the tree which is a `function_definition`. The "at" symbol sets up a capture that we'll be able to access (again, see below) --- the name we give to it is irrelevant, and I tend to just use a camel-case version of the kind of node I'm capturing. Everything inside the double brackets corresponds to the query we want to run.
 
 #### Queries with more structure
 
@@ -115,13 +115,13 @@ local query = vim.treesitter.query.parse("cpp",
 ## Processing matches on queries
 
 Now that we've written a few queries, there are a few ways we can actually run those queries on a buffer (or a string --- see below): the `iter_captures(...)` and `iter_matches(...)` functions.
-For whatever reason the `iter_matches` approach feels more natural to me, so that's what I'll describe here (and it's mostly what's used in the plugin). In it's simplest form, suppose we have a `local query =...` defined (perhaps a la one of the examples above). We can then write:
+For whatever reason the `iter_matches` approach feels more natural to me, so that's what I'll describe here (and it's mostly what's used in the plugin). In it's simplest form, suppose we have a `local query =...` defined (perhaps one of the examples above). We can then write:
 ```lua
 local matches = query:iter_matches(node,0)
 ```
-where the `node` is a node of the tree you want the query to use as the root of the search, and here `0` is the buffer that will be used as the source. 
+where `node` is a node you want the query to use as the root of the search, and here `0` is the buffer that will be used as the source. 
+There are two other optional arguments to `iter_matches` that can be used to control the start and end of the query within the source --- this seems to be used a lot when treesitter is helping with highlighting (making sure that you're only querying parts of the tree that appear in the visible window), but I'm not going to use them here.
 
-There are two other optional arguments that can be used to control the start and end of the query within the source --- I'm not going to use that here.
 We now have stored in `matches` all of the results of running our query on the sub-tree that starts at the given node. We can loop through these matches like so:
 ```lua
 for id, match, metadata in matches do 
