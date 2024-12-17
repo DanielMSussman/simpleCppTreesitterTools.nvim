@@ -1,4 +1,5 @@
-local treesitterUtilities = require("simpleCppTreesitterTools.simpleTreesitterUtilities")
+-- local treesitterUtilities = require("simpleCppTreesitterTools.simpleTreesitterUtilities")
+local treesitterUtilities = nil
 local helperBot = require("simpleCppTreesitterTools.fileHelpers")
 local M = {}
 
@@ -11,6 +12,18 @@ M.data = {
 --will be set during plugin setup
 M.config = {
 }
+
+--[[
+load treesitterUtilities (i.e., require the file that has all of the parsing queries) only when called
+I'm not exactly sure if I'm doing the *.scm file stuff correctly, but clearly
+loading / parsing the queries is slowing down the loading of the plugin.
+This function moves that slow-down just to the first time a cppModule function is invoked from the init.lua file
+]]--
+M.loadTreesitterUtilities = function()
+    if not treesitterUtilities then
+        treesitterUtilities = require("simpleCppTreesitterTools.simpleTreesitterUtilities")
+    end
+end
 
 --[[
 build up the set of strings that will be added to the implementation file,
@@ -126,6 +139,7 @@ position of the cursor.
 This is useful given how I've implemented the "try to keep the cpp file sorted" logic
 ]]--
 M.addImplementationOnCurrentLine = function()
+    M.loadTreesitterUtilities()
     local currentCursorLine = vim.api.nvim_win_get_cursor(0)[1]
     M.addImplementationsToCPP(currentCursorLine)
 end
@@ -139,6 +153,7 @@ The function argument is a line number --- if this is not nil then only nodes
 whose starting line number is on the function argument will be a potential target of implementation
 ]]--
 M.addImplementationsToCPP = function(lineNumberRestriction)
+    M.loadTreesitterUtilities()
 
     local className, classNode,classTemplateString,classAngleBrackets  = M.determineLocalClass()
     if not classNode then
@@ -188,6 +203,7 @@ Make use of the simple query and parsing to find any variable or function argume
 Each invocation of this function jumps the cursor to the next instance, looping from the last entry to the first.
 ]]--
 M.huntForSnakeCaseVariables = function()
+    M.loadTreesitterUtilities()
     local snakeLines = treesitterUtilities.snakeCaseHunting()
 
     if #snakeLines == 0 then
@@ -235,6 +251,7 @@ Any pure virtual functions in the parent will be added to the new header. A
 configuration option can be set so that *all* virtual functions in the parent are added, too.
 ]]--
 M.createDerivedClass = function()
+    M.loadTreesitterUtilities()
     -- make sure we're already in a class
     local className, classNode  = M.determineLocalClass()
     if not classNode then
