@@ -141,6 +141,7 @@ This is useful given how I've implemented the "try to keep the cpp file sorted" 
 M.addImplementationOnCurrentLine = function()
     M.loadTreesitterUtilities()
     local currentCursorLine = vim.api.nvim_win_get_cursor(0)[1]
+    -- print(vim.inspect(currentCursorLine))
     M.addImplementationsToCPP(currentCursorLine)
 end
 
@@ -162,7 +163,6 @@ M.addImplementationsToCPP = function(lineNumberRestriction)
     if classAngleBrackets then
         className = className..classAngleBrackets
     end
-
     local nodeTable = treesitterUtilities.getImplementableFields(classNode)
     for i, nodeBatch in ipairs(nodeTable) do 
         local functionNode = nodeBatch[1]

@@ -30,12 +30,35 @@ M.findVirtualNodes = function(classNode)
     local iterCaptures = query:iter_matches(classNode,0)
 
     local tableOfNodes = {}
-    local matches = query:iter_matches(classNode, 0)
-    for id, match, metadata in iterCaptures do
-        local virtual = match[1]
-        local type = match[2]
-        local declarator = match[3]
-        local isPureVirtual = match[4]
+    for pattern, match, metadata in iterCaptures do
+        -- local virtual = match[1]
+        -- local type = match[2]
+        -- local declarator = match[3]
+        -- local isPureVirtual = match[4]
+
+        local virtual, type,declarator, isPureVirtual = nil
+
+
+        for id, nodes in pairs(match) do
+            local name  = query.captures[id]
+            for _,node in ipairs(nodes) do
+                if name == "virt" then
+                    virtual =node
+                end
+                if name == "type" then
+                    type =node
+                end
+                if name == "decl" then
+                    declarator =node
+                end
+                if name == "pureVirtual" then
+                    isPureVirtual =node
+                end
+            end
+        end
+
+
+
         local copyString = getNodeText(virtual).." "..getNodeText(type).." "..getNodeText(declarator)..";"
         --try not to be blinded by the following string manipulation, in which I put the reference and pointer symbols where I want them. You should probably just use a formatter 
         copyString = copyString:gsub("%s&", "&")
@@ -104,27 +127,45 @@ M.testImplementationFileForFunction = function(functionName,listOfParameterTypes
 
     local parameterStrings = {}
     local typeStrings={}
-    for id, match, metadata in matches do 
+    for pattern, match, metadata in matches do 
         --matches have nodes like:
         --type? functionName, qualifiedID, parameterList,functionDecl,funcDefinition
         
-        --get the class name by looking at the qualified_identifier and stripping away the double colons and everything after them
-        qualifiedIDName = getNodeText(match[3],fileString)
-        local classSpecifier = qualifiedIDName:match("^(.*)::")
-
-        if classSpecifier == className then
-            fileFunctionName = getNodeText(match[2],fileString)
-            --if we find a function of the same name, does it have the same set of argument types?
-            if fileFunctionName == functionName then
-                local parameterStrings, typeStrings = M.parseParameterList(match[4],fileString)
-                if table.concat(listOfParameterTypes) == table.concat(typeStrings) then
-                    --what line does this function start on? Are there template declarations above it?
-                    functionNodeStart = match[2]:start()
-                    while string.find(fileContent[functionNodeStart],"template") do 
-                        functionNodeStart = functionNodeStart - 1
-                    end
-                    return true, functionNodeStart
+        for id, nodes in pairs(match) do
+            local name  = query.captures[id]
+            for _,node in ipairs(nodes) do
+                if name == "qualifiedID" then
+                    qualifiedIDName = getNodeText(node,fileString)
                 end
+            end
+        end
+        --get the class name by looking at the qualified_identifier and stripping away the double colons and everything after them
+        local classSpecifier = qualifiedIDName:match("^(.*)::")
+        local functionNode = nil
+        if classSpecifier == className then
+            --if we have the right class name, is there a function of the same name with the same set of argument types?
+            local parameterStrings, typeStrings = nil
+            for id, nodes in pairs(match) do
+                local name  = query.captures[id]
+                for _,node in ipairs(nodes) do
+                    if name == "functionName" then
+                        functionNode = node
+                        fileFunctionName = getNodeText(functionNode,fileString)
+                    end
+                    if name == "parameterList" then
+                        parameterStrings,typeStrings = M.parseParameterList(node,fileString)
+                    end
+                end
+            end
+
+            if fileFunctionName == functionName and
+                table.concat(listOfParameterTypes) == table.concat(typeStrings) then
+                --what line does this function start on? Are there template declarations above it?
+                functionNodeStart = functionNode:start()
+                while string.find(fileContent[functionNodeStart],"template") do 
+                    functionNodeStart = functionNodeStart - 1
+                end
+                return true, functionNodeStart
             end
         end
     end
@@ -141,14 +182,31 @@ M.parseParameterList = function(parameterListNode,bufferNumberOrString)
 
     local parameterStrings = {}
     local typeStrings={}
-    for id, match, metadata in matches do 
-        local parameterDeclarationString=getNodeText(match[2],bufferNumberOrString or 0).." "..getNodeText(match[3],bufferNumberOrString or 0)
+    for pattern, match, metadata in matches do 
 
-        if match[1] then
-            parameterDeclarationString = getNodeText(match[1],bufferNumberOrString or 0).." "..parameterDeclarationString
+        local typeQual,typeIdText, varName = nil
+        for id, nodes in pairs(match) do
+            local name  = query.captures[id]
+            for _,node in ipairs(nodes) do
+                if name == "typeQualifier" then
+                    typeQual = getNodeText(node, bufferNumberOrString or 0)
+                end
+                if name == "typeId" then
+                    typeIdText = getNodeText(node,bufferNumberOrString or 0)
+                end
+                if name == "variableName" then
+                    varName = getNodeText(node, bufferNumberOrString or 0)
+                end
+            end
+        end
+
+        local parameterDeclarationString = typeIdText.." "..varName
+
+        if typeQual then
+            parameterDeclarationString = typeQual.." "..parameterDeclarationString
         end
         table.insert(parameterStrings,parameterDeclarationString)
-        table.insert(typeStrings,getNodeText(match[2],bufferNumberOrString or 0))
+        table.insert(typeStrings,typeIdText)
     end
 
     return parameterStrings, typeStrings
@@ -161,6 +219,7 @@ Return the identifier, and the parameter_list. Check the type_qualifier
 (i.e., is the function const)
 ]]--
 M.decomposeFunctionDeclarator = function(functionDeclaratorNode)
+    -- print(vim.inspect(functionDeclaratorNode))
     local functionName,parameterListNode,typeQualifier = nil,nil,nil
     for i = 0, functionDeclaratorNode:child_count() - 1 do
         local child = functionDeclaratorNode:child(i)
@@ -176,7 +235,6 @@ M.decomposeFunctionDeclarator = function(functionDeclaratorNode)
             parameterListNode = child
         end
     end
-
     return functionName,parameterListNode,typeQualifier
 end
 
@@ -188,8 +246,16 @@ M.findParentTemplates = function(functionNode)
     local templateAncestor = M.getNamedAncestor(functionNode,"template_declaration")
     if templateAncestor then
         local query = localQueries.templateParameterQuery
-        for id, match, metadata in query:iter_matches(templateAncestor,0) do
-            templateString = getNodeText(match[1])
+        for pattern, match, metadata in query:iter_matches(templateAncestor,0) do
+
+            for id, nodes in pairs(match) do
+                local name  = query.captures[id]
+                for _,node in ipairs(nodes) do
+                    if name == "templateParameterList" then
+                        templateString = getNodeText(node)
+                    end
+                end
+            end
         end
     end
     if templateString then
@@ -244,7 +310,7 @@ M.getImplementableFields = function(classNode)
 
     local query = localQueries.findNonPureVirtualMembers
     local matches = query:iter_matches(classNode, 0)
-    for id, match, metadata in matches do 
+    for pattern, match, metadata in matches do 
         --[[
         look at this mess of variables! 
         ]]--
@@ -257,6 +323,38 @@ M.getImplementableFields = function(classNode)
         local preTypeKewordString = nil
         local postTypeKewordString = nil
         local functionTypeString = nil
+        local isConstexpr, isStatic,typeNode,functionDeclarator,pointerDeclarator,referenceDeclarator,functionDeclarator templateOrConstructorDeclaration = nil
+
+
+        for id, nodes in pairs(match) do
+            local name  = query.captures[id]
+            for _,node in ipairs(nodes) do
+                if name == "constexprKeyword" then
+                    isConstexpr =node
+                end
+                if name == "staticKeyword" then
+                    isStatic =node
+                end
+                if name == "type" then
+                    typeNode =node
+                end
+                if name == "valueReturn" then
+                    functionDeclarator =node
+                end
+                if name == "pointerReturn" then
+                    pointerDeclarator =node
+                end
+                if name == "referenceReturn" then
+                    referenceDeclarator =node
+                end
+                if name == "functionDeclaration" then
+                    functionDeclaration =node
+                end
+                if name == "templateOrConstructorDeclaration" then
+                    templateOrConstructorDeclaration =node
+                end
+            end
+        end
 
         --[[
         I'm trying to make it extremely explicit
@@ -269,15 +367,6 @@ M.getImplementableFields = function(classNode)
         You can also, of course directly looking at the query.captures, a la:
             print(vim.inspect(query.captures))
         ]]--
-        local isConstexpr = match[1]
-        local isStatic = match[2]
-        local typeNode = match[3]
-        local functionDeclarator = match[4]
-        local pointerDeclarator = match[5]
-        local referenceDeclarator = match[6]
-        local functionDeclaration = match[7]
-        local templateOrConstructorDeclaration = match[8]
-
         --get the function node, and determine if it returns a pointer or a reference
         local functionNode
         if functionDeclarator then

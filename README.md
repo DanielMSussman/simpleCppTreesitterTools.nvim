@@ -27,7 +27,9 @@ Finally, probably most usefully, I've tried to write the code here that it's eas
 
 
 
-## Installation and Configuration
+## Installation, Configuration, and Requirements
+
+Please note that a breaking change was introduced in Neovim 0.11 (related to the way that matches to a query are iterated through). If you are using an older version of neovim, please checkout the commit with the `nvim0.10compatible` tag.
 
 Using [lazy.nvim](https://github.com/folke/lazy.nvim), installation is just
 ```lua 
